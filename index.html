@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSM Knowledge Assistant</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Marked.js for Markdown Rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- PDF.js for PDF processing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js"></script>
+    <!-- SheetJS (XLSX) for Excel processing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Configuration -->
+    <script src="config.js"></script>
+    <!-- Knowledge Base -->
+    <script src="knowledge-base.js"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        // Custom Tailwind theme configuration for the StoreHub Orange theme
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'storehub-orange': '#F97316', // Vibrant orange from logo
+                        'storehub-orange-light': '#FFF7ED', // A light, complementary orange
+                        'storehub-orange-dark': '#EA580C', // Darker orange for hover states
+                        'dark-gray': '#1F2937', // A deep gray for text
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            /* Subtle background pattern for visual appeal */
+            background-color: #f8fafc;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cg fill-rule='evenodd'%3E%3Cg fill='%23e2e8f0' fill-opacity='0.4'%3E%3Cpath d='M0 38.59l2.83-2.83 1.41 1.41L1.41 40H0v-1.41zM0 1.4l2.83 2.83 1.41-1.41L1.41 0H0v1.41zM38.59 40l-2.83-2.83 1.41-1.41L40 38.59V40h-1.41zM40 1.41l-2.83 2.83-1.41-1.41L38.59 0H40v1.41z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+        .prose h3 { font-size: 1.25em; font-weight: 600; margin-bottom: 0.5em; }
+        .prose p, .prose ul, .prose ol { margin-bottom: 1em; line-height: 1.6; }
+        .prose ul { list-style-position: inside; }
+        .prose img { border-radius: 0.75rem; border: 1px solid #e5e7eb; margin-top: 1em; margin-bottom: 1em; }
+        #drop-zone { border: 2px dashed #d1d5db; border-radius: 0.75rem; padding: 2rem; text-align: center; cursor: pointer; transition: background-color 0.2s, border-color 0.2s; }
+        #drop-zone.dragover { background-color: #FFF7ED; border-color: #F97316; }
+        .preview-item { display: flex; align-items: center; background-color: #f3f4f6; border-radius: 0.5rem; padding: 0.5rem; margin-top: 0.5rem; }
+        .preview-thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 0.25rem; margin-right: 0.75rem; flex-shrink: 0; }
+    </style>
+</head>
+<body class="text-dark-gray">
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+        <header class="text-center mb-8">
+            <div class="inline-block bg-storehub-orange p-3 rounded-full mb-4">
+                 <svg class="h-10 w-10 text-white" viewBox="0 0 80 80" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M25.2632 80V0H0V80H25.2632Z" />
+                    <path d="M54.7368 80V0H80V80H54.7368Z" />
+                    <path d="M40 55.0526L25.2632 40.3158L40 25.5789L54.7368 40.3158L40 55.0526Z"/>
+                </svg>
+            </div>
+            <h1 class="text-4xl font-bold text-dark-gray">CSM Knowledge Assistant</h1>
+            <p class="text-gray-600 mt-2">Powered by Gemini Vision</p>
+        </header>
+
+        <main class="bg-white p-6 rounded-2xl shadow-lg">
+            <div>
+                <label for="problem-input" class="text-lg font-semibold text-dark-gray">Merchant's Problem or Question</label>
+                <p class="text-sm text-gray-500 mb-3">Describe the issue, upload files, or use the microphone to speak.</p>
+                
+                <div class="relative w-full">
+                    <textarea id="problem-input" rows="4" class="w-full p-4 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-storehub-orange" placeholder="Enter text description here..."></textarea>
+                    <button id="mic-btn" class="absolute top-3 right-3 p-2 rounded-full hover:bg-gray-200 transition">
+                        <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                           <path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                        </svg>
+                    </button>
+                </div>
+                
+                <div id="drop-zone" class="mt-4">
+                    <input type="file" id="file-input" multiple hidden accept="image/*,video/*,application/pdf,.xls,.xlsx">
+                    <p class="text-gray-500">Drag & drop files here, or <span class="font-bold text-storehub-orange">click to browse</span></p>
+                    <p class="text-xs text-gray-400 mt-1">Images, Videos, PDFs, and Excel files accepted. Full file analysis is active.</p>
+                </div>
+                <div id="file-previews" class="mt-4 space-y-2"></div>
+
+                <button id="get-solution-btn" class="mt-4 w-full bg-storehub-orange text-white font-bold py-3 px-4 rounded-xl hover:bg-storehub-orange-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-storehub-orange disabled:bg-gray-400">
+                    Get Solution
+                </button>
+            </div>
+
+            <div id="results-container" class="mt-8 pt-6 border-t" style="display: none;">
+                <div id="loading-spinner" class="text-center" style="display: none;">
+                     <div class="flex justify-center items-center space-x-2">
+                        <div class="w-4 h-4 bg-storehub-orange rounded-full animate-pulse"></div>
+                        <div class="w-4 h-4 bg-storehub-orange rounded-full animate-pulse" style="animation-delay: 0.2s;"></div>
+                        <div class="w-4 h-4 bg-storehub-orange rounded-full animate-pulse" style="animation-delay: 0.4s;"></div>
+                     </div>
+                     <p id="loading-text" class="mt-4 text-gray-600">Analyzing problem...</p>
+                </div>
+                <div id="solution-output" class="flex flex-col lg:flex-row lg:space-x-6 space-y-6 lg:space-y-0">
+                    <!-- Cards will be dynamically generated here -->
+                </div>
+                <div id="copy-message" class="fixed bottom-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg" style="display:none;">Copied!</div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // --- State and Constants ---
+        let uploadedFiles = [];
+        const MAX_IMAGES = 10;
+        const MAX_VIDEOS = 5;
+        const MAX_PDFS = 5;
+        const MAX_EXCELS = 5;
+        const synth = window.speechSynthesis;
+        let recognition;
+        let isRecognizing = false;
+
+        // --- DOM References ---
+        const getSolutionBtn = document.getElementById('get-solution-btn');
+        const problemInput = document.getElementById('problem-input');
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const filePreviews = document.getElementById('file-previews');
+        const resultsContainer = document.getElementById('results-container');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const loadingText = document.getElementById('loading-text');
+        const solutionOutput = document.getElementById('solution-output');
+        const copyMessage = document.getElementById('copy-message');
+        const micBtn = document.getElementById('mic-btn');
+        const micIcon = document.getElementById('mic-icon');
+
+        // Initialize PDF.js worker
+        if (window.pdfjsLib) {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`;
+        }
+        
+        // --- Event Listeners ---
+        getSolutionBtn.addEventListener('click', handleGetSolution);
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); handleFiles(e.dataTransfer.files); });
+        fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+        micBtn.addEventListener('click', toggleSpeechRecognition);
+
+        // --- Speech Recognition Setup ---
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+                let finalTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript;
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
+                }
+                problemInput.value = problemInput.value.split('...')[0] + finalTranscript + interimTranscript + '...';
+            };
+
+            recognition.onend = () => {
+                isRecognizing = false;
+                micIcon.classList.remove('text-red-500');
+                problemInput.value = problemInput.value.replace('...', '');
+            };
+            
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error', event.error);
+                alert(`Speech recognition error: ${event.error}`);
+            };
+
+        } else {
+            micBtn.style.display = 'none'; // Hide mic button if not supported
+        }
+        
+        function toggleSpeechRecognition() {
+            if (!recognition) return;
+            if (isRecognizing) {
+                recognition.stop();
+            } else {
+                recognition.start();
+                isRecognizing = true;
+                micIcon.classList.add('text-red-500');
+            }
+        }
+
+        function handleFiles(files) {
+            let imageCount = uploadedFiles.filter(f => f.type === 'image').length;
+            let videoCount = uploadedFiles.filter(f => f.type === 'video').length;
+            let pdfCount = uploadedFiles.filter(f => f.type === 'pdf').length;
+            let excelCount = uploadedFiles.filter(f => f.type === 'excel').length;
+
+            for (const file of files) {
+                const fileType = file.type;
+                if (fileType.startsWith('image/') && imageCount < MAX_IMAGES) {
+                    uploadedFiles.push({ file, type: 'image' }); imageCount++;
+                } else if (fileType.startsWith('video/') && videoCount < MAX_VIDEOS) {
+                    uploadedFiles.push({ file, type: 'video' }); videoCount++;
+                } else if (fileType === 'application/pdf' && pdfCount < MAX_PDFS) {
+                    uploadedFiles.push({ file, type: 'pdf' }); pdfCount++;
+                } else if (fileType.match(/sheet|excel/) && excelCount < MAX_EXCELS) {
+                    uploadedFiles.push({ file, type: 'excel' }); excelCount++;
+                } else {
+                    alert(`File limit reached or file type not supported.`);
+                    continue;
+                }
+                createPreview(uploadedFiles[uploadedFiles.length - 1]);
+            }
+        }
+
+        function createPreview(fileObject) {
+            const { file, type } = fileObject;
+            const previewId = `preview-${Date.now()}-${Math.random()}`;
+            const previewWrapper = document.createElement('div');
+            previewWrapper.className = 'preview-item';
+            previewWrapper.id = previewId;
+
+            let thumb = document.createElement('div');
+            thumb.className = 'preview-thumb flex items-center justify-center';
+
+            if (type === 'image') {
+                thumb = document.createElement('img');
+                thumb.className = 'preview-thumb';
+                thumb.src = URL.createObjectURL(file);
+            } else if (type === 'video') {
+                thumb.classList.add('bg-gray-300');
+                thumb.innerHTML = `<svg class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>`;
+            } else if (type === 'pdf') {
+                thumb.classList.add('bg-red-100');
+                thumb.innerHTML = `<svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>`;
+            } else if (type === 'excel') {
+                thumb.classList.add('bg-green-100');
+                thumb.innerHTML = `<svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V7a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>`;
+            }
+            
+            const fileName = document.createElement('span');
+            fileName.className = 'flex-grow truncate text-sm text-gray-700';
+            fileName.textContent = file.name;
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'ml-2 text-gray-500 hover:text-red-600';
+            removeBtn.innerHTML = '&#10005;';
+            removeBtn.onclick = () => {
+                uploadedFiles = uploadedFiles.filter(fObj => fObj.file !== file);
+                document.getElementById(previewId).remove();
+            };
+
+            previewWrapper.appendChild(thumb);
+            previewWrapper.appendChild(fileName);
+            previewWrapper.appendChild(removeBtn);
+            filePreviews.appendChild(previewWrapper);
+        }
+
+        async function fileToContent(fileObject) {
+            const { file, type } = fileObject;
+            loadingText.textContent = `Processing ${file.name}...`;
+            if (type === 'image') {
+                const base64Data = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror = error => reject(error);
+                });
+                return { inlineData: { mimeType: file.type, data: base64Data } };
+            }
+            if (type === 'pdf') {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+                let textContent = `--- Content from PDF: ${file.name} ---\n`;
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const text = await page.getTextContent();
+                    textContent += text.items.map(item => item.str).join(' ');
+                }
+                textContent += "\n--- End of PDF Content ---\n";
+                return { text: textContent };
+            }
+            if (type === 'excel') {
+                const arrayBuffer = await file.arrayBuffer();
+                const workbook = XLSX.read(arrayBuffer, {type:'buffer'});
+                let textContent = `--- Content from Excel: ${file.name} ---\n`;
+                workbook.SheetNames.forEach(sheetName => {
+                    textContent += `Sheet: ${sheetName}\n`;
+                    const worksheet = workbook.Sheets[sheetName];
+                    const csvData = XLSX.utils.sheet_to_csv(worksheet);
+                    textContent += csvData + '\n';
+                });
+                textContent += "\n--- End of Excel Content ---\n";
+                return { text: textContent };
+            }
+            return null;
+        }
+
+        async function handleGetSolution() {
+            const userInput = problemInput.value.trim();
+            if (!userInput && uploadedFiles.length === 0) {
+                alert('Please provide a description or upload a file.'); return;
+            }
+            
+            if (isRecognizing) {
+                recognition.stop();
+            }
+            if (synth.speaking) {
+                synth.cancel();
+            }
+
+            getSolutionBtn.disabled = true; getSolutionBtn.textContent = 'Analyzing...';
+            resultsContainer.style.display = 'block'; loadingSpinner.style.display = 'block';
+            solutionOutput.innerHTML = ''; 
+            
+            const prompt = `
+                You are an expert Customer Success assistant for StoreHub. Analyze all provided content (text description, and extracted text from any PDF/Excel files, and image content) to solve a merchant's problem.
+                
+                **INPUT ANALYSIS (VERY IMPORTANT):**
+                - You will receive a combined input of text from a user, and text extracted from PDF and Excel files, and potentially images.
+                - **You MUST analyze ALL provided content.** The solution must be based on the complete context. If there is an image, it is the primary evidence. If there is text from a file, it is critical data.
+                - Prioritize your analysis in this order: 1. Image content, 2. PDF/Excel content, 3. User's text description.
+                - Note: The user may have uploaded videos which you cannot see. Do not mention them.
+                
+                **KNOWLEDGE SOURCES TO REFERENCE:**
+                1. **StoreHub Help Center** (https://care.storehub.com/en/):
+                   - Getting Started (95 articles) - Store setup, products, POS system
+                   - Point of Sale System (71 articles) - Checkout process, configuration
+                   - BackOffice (75 articles) - Business management hub, performance monitoring
+                   - Online Orders (60 articles) - Order management, delivery tracking
+                   - Hardware & Set Up (8 articles) - POS equipment configuration
+                   - External Integrations (27 articles) - Mall & application integrations
+                   - Troubleshooting (24 articles) - Common problem solutions
+                   - Quick Help (12 articles) - Fast solution guides
+                
+                2. **Internal Knowledge Base**: Any Excel data provided in uploads contains official procedures, troubleshooting steps, or product information.
+                
+                3. **File Analysis Priority**: Excel files may contain structured troubleshooting data, product catalogs, or procedure guides - treat these as authoritative sources.
+                
+                **REQUIRED OUTPUT FORMAT:**
+                Structure your response into two sections: '### For the Merchant' and '### For the CSM'.
+                - **For the Merchant:** Clear, simple, copy-paste ready message with steps. Reference specific help center sections when applicable. Use placeholder screenshots: \`![Description](https://placehold.co/600x400/E0E7FF/4F46E5?text=Description)\`.
+                - **For the CSM:** Internal explanation: cause, rationale, specific KB article links from care.storehub.com, escalation path if needed.
+            `;
+            
+            try {
+                let apiParts = [{ text: prompt }, { text: `User's Text Description: "${userInput}"\n` }];
+                const fileProcessingPromises = uploadedFiles.map(fileObject => fileToContent(fileObject));
+                const fileContents = await Promise.all(fileProcessingPromises);
+
+                fileContents.forEach(content => {
+                    if (content) apiParts.push(content);
+                });
+                
+                loadingText.textContent = "Generating solution...";
+
+                const payload = { contents: [{ role: "user", parts: apiParts }] };
+                const apiKey = window.CONFIG.GEMINI_API_KEY;
+                const apiBaseUrl = window.CONFIG.API_BASE_URL;
+                const modelName = window.CONFIG.MODEL_NAME;
+                const apiUrl = `${apiBaseUrl}/models/${modelName}:generateContent?key=${apiKey}`;
+                
+                if (!apiKey || apiKey === "YOUR_API_KEY_HERE") {
+                    throw new Error("Please add your API key to config.js");
+                }
+                
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!response.ok) { throw new Error(`API request failed: ${response.status}`); }
+                
+                const result = await response.json();
+                
+                let merchantText = "An error occurred.";
+                let csmText = "Could not retrieve explanation.";
+
+                if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts[0]) {
+                    const rawText = result.candidates[0].content.parts[0].text;
+                    const parts = rawText.split('### For the CSM');
+                    merchantText = parts[0].replace('### For the Merchant', '').trim();
+                    csmText = parts.length > 1 ? parts[1].trim() : "No specific internal explanation was generated.";
+                } else {
+                    if (result.promptFeedback && result.promptFeedback.blockReason) { 
+                        merchantText = `The AI response was empty (Reason: ${result.promptFeedback.blockReason}). Please try rephrasing.`;
+                    }
+                }
+                
+                createResponseCard('merchant', 'For the Merchant', merchantText);
+                createResponseCard('csm', 'For CSM (Internal)', csmText);
+
+            } catch (error) {
+                console.error("Error fetching solution:", error);
+                createResponseCard('merchant', 'Error', `<p class="text-red-500"><strong>An error occurred.</strong> Check the console and try again.</p>`);
+            } finally {
+                loadingSpinner.style.display = 'none';
+                getSolutionBtn.disabled = false;
+                getSolutionBtn.textContent = 'Get Solution';
+            }
+        }
+
+        function createResponseCard(type, title, markdownContent) {
+            const card = document.createElement('div');
+            const isMerchant = type === 'merchant';
+            card.className = isMerchant 
+                ? 'bg-storehub-orange-light border border-storehub-orange p-5 rounded-xl lg:w-1/2' 
+                : 'bg-gray-100 border border-gray-200 p-5 rounded-xl lg:w-1/2';
+
+            const responseArea = document.createElement('div');
+            responseArea.className = 'prose max-w-none text-dark-gray';
+            responseArea.innerHTML = marked.parse(markdownContent);
+            
+            const header = document.createElement('div');
+            header.className = 'flex justify-between items-center mb-4';
+            
+            const headerTitle = document.createElement('h2');
+            headerTitle.className = isMerchant ? 'text-xl font-bold text-storehub-orange-dark' : 'text-xl font-bold text-dark-gray';
+            headerTitle.textContent = title;
+
+            const buttonGroup = document.createElement('div');
+            buttonGroup.className = 'flex items-center space-x-2';
+
+            const listenBtn = document.createElement('button');
+            listenBtn.className = 'p-2 rounded-lg bg-gray-200 hover:bg-gray-300 transition';
+            listenBtn.innerHTML = `<svg id="speak-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg><svg id="stop-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10h6v4H9v-4z" /></svg>`;
+            listenBtn.onclick = () => handleTextToSpeech(responseArea, listenBtn);
+            buttonGroup.appendChild(listenBtn);
+            
+            if (isMerchant) {
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'bg-storehub-orange text-white font-semibold py-2 px-3 rounded-lg hover:bg-storehub-orange-dark transition';
+                copyBtn.textContent = 'Copy';
+                copyBtn.onclick = () => {
+                     navigator.clipboard.writeText(responseArea.innerText).then(() => {
+                        copyMessage.style.display = 'block';
+                        setTimeout(() => { copyMessage.style.display = 'none'; }, 2000);
+                    }).catch(err => console.error('Copy failed', err));
+                };
+                buttonGroup.appendChild(copyBtn);
+            }
+
+            header.appendChild(headerTitle);
+            header.appendChild(buttonGroup);
+            card.appendChild(header);
+            card.appendChild(responseArea);
+            solutionOutput.appendChild(card);
+        }
+
+        function handleTextToSpeech(textElement, buttonElement) {
+            const speakIcon = buttonElement.querySelector('#speak-icon');
+            const stopIcon = buttonElement.querySelector('#stop-icon');
+
+            if (synth.speaking) {
+                synth.cancel();
+                return;
+            }
+            
+            const textToSpeak = textElement.innerText;
+            const utterance = new SpeechSynthesisUtterance(textToSpeak);
+            
+            document.querySelectorAll('#solution-output #speak-icon').forEach(icon => icon.classList.remove('hidden'));
+            document.querySelectorAll('#solution-output #stop-icon').forEach(icon => icon.classList.add('hidden'));
+
+            utterance.onstart = () => {
+                speakIcon.classList.add('hidden');
+                stopIcon.classList.remove('hidden');
+            };
+
+            utterance.onend = () => {
+                speakIcon.classList.remove('hidden');
+                stopIcon.classList.add('hidden');
+            };
+            
+            synth.speak(utterance);
+        }
+    </script>
+</body>
+</html> 

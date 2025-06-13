@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSM Knowledge Base Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'storehub-orange': '#F97316',
+                        'storehub-orange-light': '#FFF7ED',
+                        'storehub-orange-dark': '#EA580C',
+                        'dark-gray': '#1F2937'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cg fill-rule='evenodd'%3E%3Cg fill='%23e2e8f0' fill-opacity='0.4'%3E%3Cpath d='M0 38.59l2.83-2.83 1.41 1.41L1.41 40H0v-1.41zM0 1.4l2.83 2.83 1.41-1.41L1.41 0H0v1.41zM38.59 40l-2.83-2.83 1.41-1.41L40 38.59V40h-1.41zM40 1.41l-2.83 2.83-1.41-1.41L38.59 0H40v1.41z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+        .tab-active { 
+            background-color: #F97316 !important; 
+            color: white !important; 
+        }
+        .tab-inactive { 
+            background-color: #f3f4f6 !important; 
+            color: #1F2937 !important; 
+        }
+        .tab-inactive:hover { 
+            background-color: #FFF7ED !important; 
+            color: #EA580C !important; 
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="container mx-auto p-6 max-w-7xl">
+        <!-- Header -->
+        <header class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <div class="inline-block bg-storehub-orange p-3 rounded-full mr-4">
+                        <svg class="h-8 w-8 text-white" viewBox="0 0 80 80" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M25.2632 80V0H0V80H25.2632Z" />
+                            <path d="M54.7368 80V0H80V80H54.7368Z" />
+                            <path d="M40 55.0526L25.2632 40.3158L40 25.5789L54.7368 40.3158L40 55.0526Z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold text-dark-gray">CSM Knowledge Base Admin</h1>
+                        <p class="text-gray-600">Manage knowledge sources for the CSM Assistant</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span id="status-indicator" class="px-3 py-1 rounded-full text-sm bg-storehub-orange-light text-storehub-orange-dark border border-storehub-orange">
+                        ✅ System Active
+                    </span>
+                    <button id="export-config-btn" class="bg-storehub-orange text-white px-4 py-2 rounded-lg hover:bg-storehub-orange-dark">
+                        Export Config
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- User Account Section -->
+        <div class="bg-gradient-to-r from-storehub-orange-light to-orange-50 border border-storehub-orange rounded-lg p-4 mb-6">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h3 class="text-sm font-semibold text-storehub-orange-dark">👤 User Account</h3>
+                    <div id="user-info" class="text-xs text-storehub-orange-dark mt-1">
+                        <span id="current-user">Not logged in</span> • <span id="user-role">No Role</span>
+                    </div>
+                </div>
+                <div class="flex space-x-2">
+                    <button id="login-btn" class="bg-storehub-orange text-white px-3 py-1 rounded text-sm hover:bg-storehub-orange-dark">
+                        🔐 Login
+                    </button>
+                    <button id="logout-btn" class="bg-dark-gray text-white px-3 py-1 rounded text-sm hover:bg-gray-700" style="display:none;">
+                        🚪 Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <nav class="bg-white rounded-lg shadow-md mb-6">
+            <div class="flex border-b">
+                <button class="tab-btn flex-1 py-3 px-6 text-center font-medium rounded-tl-lg tab-active" data-tab="websites">
+                    🌐 Website Sources
+                </button>
+                <button class="tab-btn flex-1 py-3 px-6 text-center font-medium tab-inactive" data-tab="files">
+                    📁 File Sources
+                </button>
+                <button class="tab-btn flex-1 py-3 px-6 text-center font-medium tab-inactive" data-tab="templates">
+                    📋 Templates
+                </button>
+                <button class="tab-btn flex-1 py-3 px-6 text-center font-medium tab-inactive" data-tab="content">
+                    📄 Content Management
+                </button>
+                <button class="tab-btn flex-1 py-3 px-6 text-center font-medium rounded-tr-lg tab-inactive" data-tab="settings">
+                    ⚙️ Settings
+                </button>
+            </div>
+        </nav>
+
+        <!-- Tab Content -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            
+            <!-- Website Sources Tab -->
+            <div id="websites-tab" class="tab-content">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-dark-gray">Website Knowledge Sources</h2>
+                    <button id="add-website-btn" class="bg-storehub-orange text-white px-4 py-2 rounded-lg hover:bg-storehub-orange-dark">
+                        + Add Website
+                    </button>
+                </div>
+
+                <!-- Add Website Form -->
+                <div id="add-website-form" class="bg-storehub-orange-light border border-storehub-orange rounded-lg p-4 mb-6 hidden">
+                    <h3 class="text-lg font-semibold mb-4">Add New Website Source</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Website Name</label>
+                            <input type="text" id="website-name" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="e.g., StoreHub Help Center">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Website URL</label>
+                            <input type="url" id="website-url" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="https://care.storehub.com/en/">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                            <select id="website-category" class="w-full p-3 border border-gray-300 rounded-lg">
+                                <option value="help-center">Help Center</option>
+                                <option value="documentation">Documentation</option>
+                                <option value="knowledge-base">Knowledge Base</option>
+                                <option value="faq">FAQ</option>
+                                <option value="support">Support</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+                            <select id="website-priority" class="w-full p-3 border border-gray-300 rounded-lg">
+                                <option value="high">High</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="low">Low</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                        <textarea id="website-description" class="w-full p-3 border border-gray-300 rounded-lg" rows="3" placeholder="Brief description of this knowledge source..."></textarea>
+                    </div>
+                    <div class="flex space-x-3 mt-4">
+                        <button id="save-website-btn" class="bg-storehub-orange text-white px-4 py-2 rounded-lg hover:bg-storehub-orange-dark">Save Website</button>
+                        <button id="cancel-website-btn" class="bg-dark-gray text-white px-4 py-2 rounded-lg hover:bg-gray-600">Cancel</button>
+                        <button id="test-website-btn" class="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700">Test Connection</button>
+                    </div>
+                </div>
+
+                <!-- Website List -->
+                <div id="websites-list" class="space-y-4">
+                    <!-- Websites will be dynamically added here -->
+                </div>
+            </div>
+
+            <!-- File Sources Tab -->
+            <div id="files-tab" class="tab-content hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-dark-gray">File Knowledge Sources</h2>
+                    <button id="upload-files-btn" class="bg-storehub-orange text-white px-4 py-2 rounded-lg hover:bg-storehub-orange-dark">
+                        📁 Upload Files
+                    </button>
+                </div>
+
+                <!-- File Upload Area -->
+                <div id="file-upload-zone" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center mb-6 hover:border-storehub-orange transition-colors">
+                    <input type="file" id="file-upload-input" multiple hidden accept=".pdf,.doc,.docx,.xls,.xlsx,.txt">
+                    <div class="space-y-2">
+                        <div class="text-4xl">📁</div>
+                        <p class="text-lg font-medium text-gray-700">Drag & drop files here or click to browse</p>
+                        <p class="text-sm text-gray-500">Supports: PDF, Word (.doc, .docx), Excel (.xls, .xlsx), Text files</p>
+                    </div>
+                </div>
+
+                <!-- File Processing Status -->
+                <div id="file-processing-status" class="hidden mb-6">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h3 class="font-semibold text-blue-800 mb-2">Processing Files...</h3>
+                        <div id="processing-progress" class="space-y-2">
+                            <!-- Progress items will be added here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- File List -->
+                <div id="files-list" class="space-y-4">
+                    <!-- Files will be dynamically added here -->
+                </div>
+            </div>
+
+            <!-- Templates Tab -->
+            <div id="templates-tab" class="tab-content hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-dark-gray">Template Management</h2>
+                    <div class="flex space-x-2">
+                        <button id="upload-template-btn" class="bg-storehub-orange text-white px-4 py-2 rounded-lg hover:bg-storehub-orange-dark disabled:bg-gray-400" disabled>
+                            📤 Upload Template
+                        </button>
+                        <button id="create-template-btn" class="bg-storehub-orange-dark text-white px-4 py-2 rounded-lg hover:bg-storehub-orange disabled:bg-gray-400" disabled>
+                            ➕ Create Template
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Permission Notice -->
+                <div id="template-permission-notice" class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                    <div class="flex items-center">
+                        <svg class="h-5 w-5 text-yellow-400 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                        <p class="text-sm font-medium text-yellow-800">
+                            Please log in to access template management features. Management users can upload/edit templates, Normal users can download templates.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Template Upload Form -->
+                <div id="template-upload-form" class="bg-storehub-orange-light border border-storehub-orange rounded-lg p-4 mb-6 hidden">
+                    <h3 class="text-lg font-semibold mb-4">Upload New Template</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Template Name</label>
+                            <input type="text" id="template-name" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="e.g., Customer Issue Template">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Template Type</label>
+                            <select id="template-type" class="w-full p-3 border border-gray-300 rounded-lg">
+                                <option value="troubleshooting">Troubleshooting Template</option>
+                                <option value="faq">FAQ Template</option>
+                                <option value="procedures">Procedures Template</option>
+                                <option value="products">Products Template</option>
+                                <option value="escalation">Escalation Template</option>
+                                <option value="custom">Custom Template</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                        <textarea id="template-description" class="w-full p-3 border border-gray-300 rounded-lg" rows="3" placeholder="Describe what this template is for and how to use it..."></textarea>
+                    </div>
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Template File</label>
+                        <input type="file" id="template-file-input" class="w-full p-3 border border-gray-300 rounded-lg" accept=".xlsx,.xls,.docx,.doc,.pdf,.txt">
+                    </div>
+                    <div class="flex space-x-3 mt-4">
+                        <button id="save-template-btn" class="bg-storehub-orange text-white px-4 py-2 rounded-lg hover:bg-storehub-orange-dark">Save Template</button>
+                        <button id="cancel-template-btn" class="bg-dark-gray text-white px-4 py-2 rounded-lg hover:bg-gray-600">Cancel</button>
+                    </div>
+                </div>
+
+                <!-- Template Creation Form -->
+                <div id="template-create-form" class="bg-storehub-orange-light border border-storehub-orange rounded-lg p-4 mb-6 hidden">
+                    <h3 class="text-lg font-semibold mb-4">Create New Template</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Template Name</label>
+                            <input type="text" id="create-template-name" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="e.g., Support Ticket Template">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Template Format</label>
+                            <select id="create-template-format" class="w-full p-3 border border-gray-300 rounded-lg">
+                                <option value="excel">Excel Spreadsheet (.xlsx)</option>
+                                <option value="word">Word Document (.docx)</option>
+                                <option value="text">Text File (.txt)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Template Structure (JSON Format)</label>
+                        <textarea id="create-template-structure" class="w-full p-3 border border-gray-300 rounded-lg font-mono text-sm" rows="8" placeholder='{"columns": ["Issue Type", "Description", "Solution", "Priority"], "example_data": [["Login Problem", "User cannot log in", "Reset password", "High"]]}'></textarea>
+                    </div>
+                    <div class="flex space-x-3 mt-4">
+                        <button id="generate-template-btn" class="bg-storehub-orange text-white px-4 py-2 rounded-lg hover:bg-storehub-orange-dark">Generate Template</button>
+                        <button id="cancel-create-template-btn" class="bg-dark-gray text-white px-4 py-2 rounded-lg hover:bg-gray-600">Cancel</button>
+                    </div>
+                </div>
+
+                <!-- Template List -->
+                <div id="templates-list" class="space-y-4">
+                    <!-- Templates will be dynamically added here -->
+                </div>
+            </div>
+
+            <!-- Content Management Tab -->
+            <div id="content-tab" class="tab-content hidden">
+                <h2 class="text-2xl font-bold text-dark-gray mb-6">Content Management</h2>
+                
+                <!-- Search and Filter -->
+                <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Search Content</label>
+                            <input type="text" id="content-search" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Search knowledge base...">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Filter by Source</label>
+                            <select id="content-source-filter" class="w-full p-3 border border-gray-300 rounded-lg">
+                                <option value="">All Sources</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Filter by Type</label>
+                            <select id="content-type-filter" class="w-full p-3 border border-gray-300 rounded-lg">
+                                <option value="">All Types</option>
+                                <option value="website">Website</option>
+                                <option value="pdf">PDF</option>
+                                <option value="excel">Excel</option>
+                                <option value="word">Word</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Content Overview -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-storehub-orange-light rounded-lg p-4 border border-storehub-orange">
+                        <h3 class="font-semibold text-storehub-orange-dark">Total Sources</h3>
+                        <p id="total-sources" class="text-2xl font-bold text-storehub-orange-dark">0</p>
+                    </div>
+                    <div class="bg-green-50 rounded-lg p-4 border border-green-300">
+                        <h3 class="font-semibold text-green-800">Active Websites</h3>
+                        <p id="active-websites" class="text-2xl font-bold text-green-900">0</p>
+                    </div>
+                    <div class="bg-yellow-50 rounded-lg p-4 border border-yellow-300">
+                        <h3 class="font-semibold text-yellow-800">Uploaded Files</h3>
+                        <p id="uploaded-files" class="text-2xl font-bold text-yellow-900">0</p>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-4 border border-gray-300">
+                        <h3 class="font-semibold text-dark-gray">Content Entries</h3>
+                        <p id="content-entries" class="text-2xl font-bold text-dark-gray">0</p>
+                    </div>
+                </div>
+
+                <!-- Content Table -->
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse border border-gray-300">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="border border-gray-300 px-4 py-2 text-left">Source</th>
+                                <th class="border border-gray-300 px-4 py-2 text-left">Type</th>
+                                <th class="border border-gray-300 px-4 py-2 text-left">Content Preview</th>
+                                <th class="border border-gray-300 px-4 py-2 text-left">Last Updated</th>
+                                <th class="border border-gray-300 px-4 py-2 text-left">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="content-table-body">
+                            <!-- Content rows will be added here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Settings Tab -->
+            <div id="settings-tab" class="tab-content hidden">
+                <h2 class="text-2xl font-bold text-dark-gray mb-6">System Settings</h2>
+                
+                <div class="space-y-6">
+                    <!-- API Configuration -->
+                    <div class="border border-gray-200 rounded-lg p-6">
+                        <h3 class="text-lg font-semibold mb-4">API Configuration</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Content Refresh Interval (hours)</label>
+                                <input type="number" id="refresh-interval" value="24" class="w-full p-3 border border-gray-300 rounded-lg">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Max File Size (MB)</label>
+                                <input type="number" id="max-file-size" value="50" class="w-full p-3 border border-gray-300 rounded-lg">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Knowledge Base Settings -->
+                    <div class="border border-gray-200 rounded-lg p-6">
+                        <h3 class="text-lg font-semibold mb-4">Knowledge Base Settings</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-center">
+                                <input type="checkbox" id="auto-update" checked class="mr-3">
+                                <label for="auto-update" class="text-sm text-gray-700">Auto-update content from websites</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="checkbox" id="content-versioning" checked class="mr-3">
+                                <label for="content-versioning" class="text-sm text-gray-700">Enable content versioning</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="checkbox" id="duplicate-detection" checked class="mr-3">
+                                <label for="duplicate-detection" class="text-sm text-gray-700">Detect and merge duplicate content</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Data Management -->
+                    <div class="border border-gray-200 rounded-lg p-6">
+                        <h3 class="text-lg font-semibold mb-4">Data Management</h3>
+                        <div class="flex space-x-4">
+                            <button id="backup-data-btn" class="bg-storehub-orange text-white px-4 py-2 rounded-lg hover:bg-storehub-orange-dark">
+                                💾 Backup Data
+                            </button>
+                            <button id="clear-cache-btn" class="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700">
+                                🗑️ Clear Cache
+                            </button>
+                            <button id="reset-system-btn" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">
+                                ⚠️ Reset System
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Modal -->
+    <div id="loading-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
+            <div class="text-center">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-storehub-orange mx-auto mb-4"></div>
+                <p id="loading-text" class="text-gray-700">Processing...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <h3 class="text-lg font-semibold mb-4">Admin Login</h3>
+            <form id="login-form">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                    <input type="text" id="login-username" class="w-full p-3 border border-gray-300 rounded-lg" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                    <input type="password" id="login-password" class="w-full p-3 border border-gray-300 rounded-lg" required>
+                </div>
+                <div class="flex justify-between items-center">
+                    <button type="button" id="close-login-modal" class="text-gray-500 hover:text-gray-700">Cancel</button>
+                    <button type="submit" class="bg-storehub-orange text-white px-4 py-2 rounded-lg hover:bg-storehub-orange-dark">Login</button>
+                </div>
+            </form>
+            <div class="mt-4 p-3 bg-storehub-orange-light rounded text-sm">
+                <strong>Demo Accounts:</strong><br>
+                <strong>Management:</strong> admin / admin123<br>
+                <strong>Normal User:</strong> user / user123
+            </div>
+        </div>
+    </div>
+
+    <script src="admin-backend.js"></script>
+</body>
+</html> 

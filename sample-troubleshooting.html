@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate Sample Excel for Testing</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <h2>Generate Sample Success Team Guidelines Excel</h2>
+    <button onclick="generateSampleExcel()">Download Sample Excel File</button>
+    
+    <script>
+        function generateSampleExcel() {
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+            
+            // Troubleshooting Sheet
+            const troubleshootingData = [
+                ['Problem', 'Solution', 'Category', 'Priority'],
+                ['POS not syncing with inventory', 'Check internet connection, restart POS device, verify sync settings in BackOffice', 'POS', 'High'],
+                ['Payment gateway timeout', 'Verify payment gateway settings, check merchant account status, test with different payment method', 'Payment', 'High'],
+                ['Reports not generating', 'Clear browser cache, check data permissions, verify date range selection', 'Reporting', 'Medium'],
+                ['Merchant dashboard slow', 'Check internet speed, clear cache, restart browser, check for browser updates', 'Performance', 'Medium'],
+                ['Inventory discrepancies', 'Run inventory sync, check manual adjustments, verify product mappings', 'Inventory', 'High']
+            ];
+            const troubleshootingWS = XLSX.utils.aoa_to_sheet(troubleshootingData);
+            XLSX.utils.book_append_sheet(wb, troubleshootingWS, 'Troubleshooting');
+            
+            // FAQ Sheet
+            const faqData = [
+                ['Question', 'Answer', 'Category', 'Keywords'],
+                ['How do I reset a POS device?', 'Hold power button for 10 seconds, wait for restart, login with merchant credentials', 'POS', 'reset, restart, POS, device'],
+                ['Why are sales not appearing in reports?', 'Check sync status, verify internet connection, ensure POS is properly connected to account', 'Sales', 'sync, sales, reports, connection'],
+                ['How to escalate technical issues?', 'Try standard troubleshooting first, document all steps taken, escalate to L2 support with ticket details', 'Support', 'escalate, technical, support, L2']
+            ];
+            const faqWS = XLSX.utils.aoa_to_sheet(faqData);
+            XLSX.utils.book_append_sheet(wb, faqWS, 'FAQ');
+            
+            // Procedures Sheet
+            const proceduresData = [
+                ['Procedure', 'Steps', 'Department', 'Notes'],
+                ['Merchant Onboarding', '1. Verify merchant account details 2. Setup POS devices 3. Configure payment settings 4. Provide training 5. Schedule follow-up', 'CSM', 'Complete within 24 hours of signup'],
+                ['Issue Escalation', '1. Attempt standard troubleshooting 2. Check knowledge base 3. Document all steps taken 4. Escalate to appropriate L2 team', 'Support', 'Always document resolution for future reference'],
+                ['Account Suspension Review', '1. Check suspension reason 2. Verify merchant compliance 3. Review payment history 4. Coordinate with appropriate team', 'CSM', 'Handle with sensitivity and urgency']
+            ];
+            const proceduresWS = XLSX.utils.aoa_to_sheet(proceduresData);
+            XLSX.utils.book_append_sheet(wb, proceduresWS, 'Procedures');
+            
+            // Escalation Sheet
+            const escalationData = [
+                ['Issue', 'Level', 'Contact', 'Timeframe'],
+                ['Hardware Failure', 'L2', 'tech-support@storehub.com', '2 hours'],
+                ['Payment Processing Issues', 'L3', 'payments@storehub.com', '1 hour'],
+                ['Account Security Concerns', 'L2', 'security@storehub.com', '30 minutes'],
+                ['Data Corruption', 'L3', 'data-recovery@storehub.com', '1 hour'],
+                ['Integration Failures', 'L2', 'integrations@storehub.com', '4 hours']
+            ];
+            const escalationWS = XLSX.utils.aoa_to_sheet(escalationData);
+            XLSX.utils.book_append_sheet(wb, escalationWS, 'Escalation');
+            
+            // Download the file
+            XLSX.writeFile(wb, 'Success-Team-Troubleshooting-Guidelines.xlsx');
+            alert('Sample Excel file downloaded! Upload this to test the knowledge base system.');
+        }
+    </script>
+</body>
+</html> 

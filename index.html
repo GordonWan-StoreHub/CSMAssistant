@@ -17,6 +17,8 @@
     <script src="config.js"></script>
     <!-- Knowledge Base -->
     <script src="knowledge-base.js"></script>
+    <script src="excel-knowledge-loader.js"></script>
+    <script src="knowledge-api.js"></script>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -85,6 +87,8 @@
                     </button>
                 </div>
                 
+
+
                 <div id="drop-zone" class="mt-4">
                     <input type="file" id="file-input" multiple hidden accept="image/*,video/*,application/pdf,.xls,.xlsx">
                     <p class="text-gray-500">Drag & drop files here, or <span class="font-bold text-storehub-orange">click to browse</span></p>
@@ -124,6 +128,8 @@
         const synth = window.speechSynthesis;
         let recognition;
         let isRecognizing = false;
+        let excelKnowledgeLoader = new ExcelKnowledgeLoader();
+        let knowledgeBaseLoaded = false;
 
         // --- DOM References ---
         const getSolutionBtn = document.getElementById('get-solution-btn');
@@ -152,6 +158,9 @@
         dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); handleFiles(e.dataTransfer.files); });
         fileInput.addEventListener('change', () => handleFiles(fileInput.files));
         micBtn.addEventListener('click', toggleSpeechRecognition);
+        
+        // Initialize knowledge base status (background only)
+        updateKnowledgeBaseStatus();
 
         // --- Speech Recognition Setup ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -197,6 +206,13 @@
                 isRecognizing = true;
                 micIcon.classList.add('text-red-500');
             }
+        }
+
+        // Knowledge Base Status (background only)
+        function updateKnowledgeBaseStatus() {
+            const kb = knowledgeAPI.knowledgeBase;
+            // Update knowledge base loaded status for backend processing
+            knowledgeBaseLoaded = kb.websites.length > 0 || kb.files.length > 0;
         }
 
         function handleFiles(files) {
@@ -342,9 +358,11 @@
                    - Troubleshooting (24 articles) - Common problem solutions
                    - Quick Help (12 articles) - Fast solution guides
                 
-                2. **Internal Knowledge Base**: Any Excel data provided in uploads contains official procedures, troubleshooting steps, or product information.
+                2. **Success Team - Troubleshooting Guidelines**: If loaded, contains official CSM procedures, escalation paths, and troubleshooting protocols - treat as primary authoritative source.
                 
-                3. **File Analysis Priority**: Excel files may contain structured troubleshooting data, product catalogs, or procedure guides - treat these as authoritative sources.
+                3. **Internal Knowledge Base**: Any Excel data provided in uploads contains official procedures, troubleshooting steps, or product information.
+                
+                4. **File Analysis Priority**: Excel files may contain structured troubleshooting data, product catalogs, or procedure guides - treat these as authoritative sources.
                 
                 **REQUIRED OUTPUT FORMAT:**
                 Structure your response into two sections: '### For the Merchant' and '### For the CSM'.
@@ -357,11 +375,43 @@
                 const fileProcessingPromises = uploadedFiles.map(fileObject => fileToContent(fileObject));
                 const fileContents = await Promise.all(fileProcessingPromises);
 
-                fileContents.forEach(content => {
-                    if (content) apiParts.push(content);
+                fileContents.forEach((content, index) => {
+                    if (content) {
+                        apiParts.push(content);
+                        
+                        // Enhanced template-based analysis
+                        if (content.text && uploadedFiles[index]) {
+                            const fileName = uploadedFiles[index].file.name;
+                            const templateAnalysis = knowledgeAPI.analyzeFileWithTemplates(fileName, content.text);
+                            
+                            if (templateAnalysis.matchedTemplate) {
+                                apiParts.push({
+                                    text: `\n--- TEMPLATE ANALYSIS FOR ${fileName} ---\n` +
+                                          `Matched Template: ${templateAnalysis.matchedTemplate.name}\n` +
+                                          `Template Type: ${templateAnalysis.matchedTemplate.type}\n` +
+                                          `Interpretation: ${templateAnalysis.interpretation}\n` +
+                                          `--- END TEMPLATE ANALYSIS ---\n`
+                                });
+                            }
+                        }
+                    }
                 });
                 
                 loadingText.textContent = "Generating solution...";
+
+                // Add managed knowledge base context
+                if (knowledgeBaseLoaded) {
+                    const knowledgeContext = knowledgeAPI.generateKnowledgeContext();
+                    apiParts.push({ text: knowledgeContext });
+                }
+                
+                // Check for specific file content matches
+                uploadedFiles.forEach(fileObject => {
+                    const fileContent = knowledgeAPI.getFileContent(fileObject.file.name);
+                    if (fileContent) {
+                        apiParts.push(...fileContent);
+                    }
+                });
 
                 const payload = { contents: [{ role: "user", parts: apiParts }] };
                 const apiKey = window.CONFIG.GEMINI_API_KEY;
